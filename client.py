@@ -3,22 +3,14 @@ import sys
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server_address = ('192.168.23.1', 12345)
+server_address = ('192.168.1.19', 12345)
 print >>sys.stderr, 'connecting to %s port %s' % server_address
 sock.connect(server_address)
 
 try:
-    message = 'This is the message. It will be repeated.'
+    message = raw_input("Enter servo # and duty cycle seperated by a space:")
     print >>sys.stderr, 'sending "%s"' % message
     sock.sendall(message)
-
-    amount_received = 0
-    amount_expected = len(message)
-
-    while amount_received < amount_expected:
-        data = sock.recv(16)
-        amount_received += len(data)
-        print >>sys.stderr, 'received "%s"' % data
 
 finally:
     print >>sys.stderr, 'closing socket'
