@@ -4,7 +4,7 @@ import os
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server_address = ('192.168.1.19', 12345)
+server_address = ('192.168.23.1', 12345)
 print >>sys.stderr, 'starting up on %s port %s' % server_address
 sock.bind(server_address)
 
@@ -16,9 +16,9 @@ while True:
 
     try:
         print >>sys.stderr, 'connection from', client_address
-
+        
         while True:
-            data = connection.recv(16)
+            data = connection.recv(1024)
             print >>sys.stderr, 'received "%s"' % data
             if data:
                 print  >>sys.stderr, 'sending data back to the client'
