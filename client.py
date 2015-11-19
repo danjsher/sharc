@@ -17,7 +17,7 @@ send_buffer.put(5)
 print send_buffer.get()
 
 while True:
-    message = raw_input("Type your message to send then press enter")
+    message = raw_input("Type your message to send then press enter: ")
     sock.sendall(message)
 
 sock.close()
