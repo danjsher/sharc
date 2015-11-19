@@ -3,6 +3,7 @@ import socket
 import sys 
 import threading 
 import Queue
+import os
 
 class Server: 
     def __init__(self): 
@@ -27,7 +28,10 @@ class Server:
 
     def run(self): 
         self.open_socket() 
-        input = [self.server,sys.stdin] 
+        input = [self.server,sys.stdin]
+        cmdIssuer = CommandIssuer(self.command_queue)
+        cmdIssuer.start()
+        self.threads.append(cmdIssuer)
         running = 1 
         while running: 
             inputready,outputready,exceptready = select.select(input,[],[]) 
@@ -67,13 +71,25 @@ class Client(threading.Thread):
             if data:
                 params = data.split()
                 self.command_queue.put(data)
-                if self.command_queue.full():
-                    print self.command_queue.get()
                 self.client.send(data) 
             else: 
                 self.client.close() 
                 running = 0 
 
+class CommandIssuer(threading.Thread):
+    def __init__(self, queue):
+        threading.Thread.__init__(self)
+        self.command_queue = queue
+        
+    def run(self):
+        running = 1
+        while running:
+            if not self.command_queue.empty():
+                params = self.command_queue.get().split()
+                cmd = "echo " + params[0] + "=" + params[1] + "% > /dev/servoblaster"
+                print cmd
+                os.system(cmd)
+                
 if __name__ == "__main__": 
     s = Server() 
     s.run()
