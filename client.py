@@ -3,6 +3,8 @@ import sys
 import threading
 import Queue
 
+duty_cycle = sys.argv[1]
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 server_address = ('localhost', 12345)
@@ -16,9 +18,20 @@ send_buffer.put(5)
 
 print send_buffer.get()
 
-while True:
-    message = raw_input("Type your message to send then press enter: ")
-    sock.sendall(message)
+#while True:
+    #message = raw_input("Type your message to send then press enter: ")
+message = "0 " + duty_cycle 
+sock.send(message)
+sock.recv(1024)
+message = "1 " + duty_cycle 
+sock.send(message)
+sock.recv(1024)
+message = "2 " + duty_cycle 
+sock.send(message)
+sock.recv(1024)
+message = "3 " + duty_cycle
+sock.send(message)
+sock.recv(1024)
 
 sock.close()
 
