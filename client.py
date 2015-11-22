@@ -1,17 +1,38 @@
 import socket
 import sys
+import threading
+import Queue
+
+host = sys.argv[1]
+duty_cycle = sys.argv[2]
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server_address = ('192.168.1.19', 12345)
+server_address = (host, 12345)
+#server_address = ('192.168.23.1', 12345)
 print >>sys.stderr, 'connecting to %s port %s' % server_address
 sock.connect(server_address)
 
-try:
-    message = raw_input("Enter servo # and duty cycle seperated by a space:")
-    print >>sys.stderr, 'sending "%s"' % message
-    sock.sendall(message)
+send_buffer = Queue.Queue()
 
-finally:
-    print >>sys.stderr, 'closing socket'
-    sock.close()
+send_buffer.put(5)
+
+print send_buffer.get()
+
+#while True:
+    #message = raw_input("Type your message to send then press enter: ")
+message = "0 " + duty_cycle 
+sock.send(message)
+sock.recv(1024)
+message = "1 " + duty_cycle 
+sock.send(message)
+sock.recv(1024)
+message = "2 " + duty_cycle 
+sock.send(message)
+sock.recv(1024)
+message = "3 " + duty_cycle
+sock.send(message)
+sock.recv(1024)
+
+sock.close()
+
