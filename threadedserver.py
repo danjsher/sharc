@@ -6,8 +6,8 @@ import Queue
 import os
 
 class Server: 
-    def __init__(self): 
-        self.host = 'localhost' 
+    def __init__(self, host): 
+        self.host = host 
         self.port = 12345 
         self.backlog = 5 
         self.size = 1024 
@@ -91,6 +91,6 @@ class CommandIssuer(threading.Thread):
                 os.system(cmd)
                 
 if __name__ == "__main__": 
-    s = Server() 
+    s = Server(sys.argv[1]) 
     s.run()
 
