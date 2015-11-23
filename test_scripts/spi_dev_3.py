@@ -17,10 +17,13 @@ def readChannel(channel):
 
 
 if __name__ == '__main__':
+    list = [None, None, None, None, None]
+    
     try:
         while True:
-            val = readChannel(7)
-            print "ADC Result: ", str(val)
+            for i in range(0,5):
+                list[i] = readChannel(i)
+            print "| %s | %s | %s | %s | %s |" % (list[0], list[1], list[2], list[3], list[4])
             time.sleep(.01)
     except KeyboardInterrupt:
         spi.close()
