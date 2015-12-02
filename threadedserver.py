@@ -86,7 +86,14 @@ class CommandIssuer(threading.Thread):
         while running:
             if not self.command_queue.empty():
                 params = self.command_queue.get().split()
-                cmd = "echo " + params[0] + "=" + params[1] + "% > /dev/servoblaster"
+                num = float(params[4])
+                pinky_pulse_width = 100
+                if ( num < 735 ):
+                    pinky_pulse_width = 100
+                else:
+                    pinky_pulse_width = (10.0 - 5.0*((num-735.0)/288.0))*20.0
+                
+                cmd = "echo 0=" + str(pinky_pulse_width) + " > /dev/servoblaster"
                 print cmd
                 os.system(cmd)
                 
