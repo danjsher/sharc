@@ -74,15 +74,18 @@ class Client(threading.Thread):
                 self.client.send(data) 
             else: 
                 self.client.close() 
-                running = 0 
+                running = 0
 
-def calcPulseWidth(adc_reading, adc_min, adc_max):
+        self.client.close()
+        print 'Connection closed.'
+
+def calcPulseWidth(adc_reading, adc_min, adc_max, pwm_min, pwm_max):
     if( adc_reading < adc_min):
-        return 200
+        return 20*pwm_max
     elif(adc_reading > adc_max):
-        return 100
+        return 20*(pwm_max-pwm_min)
 
-    pulse_width = (10.0 - 5.0*((adc_reading - adc_min)/(adc_max-adc_min)))*20.0
+    pulse_width = (pwm_max - pwm_min*((adc_reading - adc_min)/(adc_max-adc_min)))*20.0
 
     return pulse_width
                 
@@ -107,13 +110,15 @@ class CommandIssuer(threading.Thread):
                                        float(params[3]),
                                        float(params[4]))
 
+                # Calculate pulse widths based on adc values from sleeve
 
-                thumb_pw = calcPulseWidth(thumb_adc_reading, THUMB_MAX, THUMB_MIN)
-                index_pw = calcPulseWidth(index_adc_reading, INDEX_MAX, INDEX_MIN)
-                mid_pw   = calcPulseWidth(mid_adc_reading, MID_MAX, MID_MIN)
-                ring_pw  = calcPulseWidth(ring_adc_reading, RING_MAX, RING_MIN)
-                pinky_pw = calcPulseWidth(pinky_adc_reading, PINKY_MAX, PINKY_MIN)
-                
+                thumb_pw = calcPulseWidth(thumb_adc_reading, 725, 1023, 5.0, 10.0)
+                index_pw = calcPulseWidth(index_adc_reading, 745, 930, 7.0, 10.5)
+                mid_pw   = calcPulseWidth(mid_adc_reading, 730, 1023, 7.0, 11.5)
+                ring_pw  = calcPulseWidth(ring_adc_reading, 680, 1023, 6.4, 10.4)
+                pinky_pw = calcPulseWidth(pinky_adc_reading, 735, 1023, 5.0, 10.0)
+
+                # construct echo commands
                 
                 thumb_cmd = "echo 0=" + str(thumb_pw) + " > /dev/servoblaster"
                 index_cmd = "echo 1=" + str(index_pw) + " > /dev/servoblaster"
@@ -121,19 +126,21 @@ class CommandIssuer(threading.Thread):
                 ring_cmd  = "echo 3=" + str(ring_pw) + " > /dev/servoblaster"
                 pinky_cmd = "echo 4=" + str(pinky_pw) + " > /dev/servoblaster"
 
+                # print for debug and monitoring
+                
                 print thumb_cmd
                 print index_cmd
                 print mid_cmd
                 print ring_cmd
                 print pinky_cmd
 
-                ####################################################
-                #TAKEN OUT FOR TESTING BUT IT"LL NEED TO BE BACK IN#
-                ####################################################
+                # Execute bash commands to write to servoblaster kernel 
+                os.system(pinky_cmd)
+                os.system(ring_cmd)
+                os.system(mid_cmd)
+                os.system(index_cmd)
+                os.system(thumb_cmd)
                 
-                #os.system(cmd)
-
-                ####################################################
                 
 if __name__ == "__main__": 
     s = Server(sys.argv[1]) 
