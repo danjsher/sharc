@@ -76,6 +76,16 @@ class Client(threading.Thread):
                 self.client.close() 
                 running = 0 
 
+def calcPulseWidth(adc_reading, adc_min, adc_max):
+    if( adc_reading < adc_min):
+        return 200
+    elif(adc_reading > adc_max):
+        return 100
+
+    pulse_width = (10.0 - 5.0*((adc_reading - adc_min)/(adc_max-adc_min)))*20.0
+
+    return pulse_width
+                
 class CommandIssuer(threading.Thread):
     def __init__(self, queue):
         threading.Thread.__init__(self)
@@ -86,16 +96,44 @@ class CommandIssuer(threading.Thread):
         while running:
             if not self.command_queue.empty():
                 params = self.command_queue.get().split()
-                num = float(params[4])
-                pinky_pulse_width = 100
-                if ( num < 735 ):
-                    pinky_pulse_width = 100
-                else:
-                    pinky_pulse_width = (10.0 - 5.0*((num-735.0)/288.0))*20.0
+
+                (thumb_adc_reading,
+                 index_adc_reading,
+                 mid_adc_reading,
+                 ring_adc_reading,
+                 pinky_adc_reading) = (float(params[0]),
+                                       float(params[1]),
+                                       float(params[2]),
+                                       float(params[3]),
+                                       float(params[4]))
+
+
+                thumb_pw = calcPulseWidth(thumb_adc_reading, THUMB_MAX, THUMB_MIN)
+                index_pw = calcPulseWidth(index_adc_reading, INDEX_MAX, INDEX_MIN)
+                mid_pw   = calcPulseWidth(mid_adc_reading, MID_MAX, MID_MIN)
+                ring_pw  = calcPulseWidth(ring_adc_reading, RING_MAX, RING_MIN)
+                pinky_pw = calcPulseWidth(pinky_adc_reading, PINKY_MAX, PINKY_MIN)
                 
-                cmd = "echo 0=" + str(pinky_pulse_width) + " > /dev/servoblaster"
-                print cmd
-                os.system(cmd)
+                
+                thumb_cmd = "echo 0=" + str(thumb_pw) + " > /dev/servoblaster"
+                index_cmd = "echo 1=" + str(index_pw) + " > /dev/servoblaster"
+                mid_cmd   = "echo 2=" + str(mid_pw) + " > /dev/servoblaster"
+                ring_cmd  = "echo 3=" + str(ring_pw) + " > /dev/servoblaster"
+                pinky_cmd = "echo 4=" + str(pinky_pw) + " > /dev/servoblaster"
+
+                print thumb_cmd
+                print index_cmd
+                print mid_cmd
+                print ring_cmd
+                print pinky_cmd
+
+                ####################################################
+                #TAKEN OUT FOR TESTING BUT IT"LL NEED TO BE BACK IN#
+                ####################################################
+                
+                #os.system(cmd)
+
+                ####################################################
                 
 if __name__ == "__main__": 
     s = Server(sys.argv[1]) 
