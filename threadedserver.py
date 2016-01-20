@@ -112,11 +112,11 @@ class CommandIssuer(threading.Thread):
 
                 # Calculate pulse widths based on adc values from sleeve
 
-                thumb_pw = calcPulseWidth(thumb_adc_reading, 725, 1023, 5.0, 10.0)
-                index_pw = calcPulseWidth(index_adc_reading, 745, 930, 7.0, 10.5)
-                mid_pw   = calcPulseWidth(mid_adc_reading, 730, 1023, 7.0, 11.5)
+                thumb_pw = calcPulseWidth(thumb_adc_reading, 725, 1023, 7.5, 11.5)
+                index_pw = calcPulseWidth(index_adc_reading, 745, 930, 8.0, 11.5)
+                mid_pw   = calcPulseWidth(mid_adc_reading, 730, 1023, 8.5, 12.5)
                 ring_pw  = calcPulseWidth(ring_adc_reading, 680, 1023, 6.4, 10.4)
-                pinky_pw = calcPulseWidth(pinky_adc_reading, 735, 1023, 5.0, 10.0)
+                pinky_pw = calcPulseWidth(pinky_adc_reading, 735, 1023, 6.0, 11.0)
 
                 # construct echo commands
                 
