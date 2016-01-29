@@ -74,8 +74,21 @@ class Client(threading.Thread):
                 self.client.send(data) 
             else: 
                 self.client.close() 
-                running = 0 
+                running = 0
 
+        self.client.close()
+        print 'Connection closed.'
+
+def calcPulseWidth(adc_reading, adc_min, adc_max, pwm_min, pwm_max):
+    if( adc_reading < adc_min):
+        return 20*pwm_max
+    elif(adc_reading > adc_max):
+        return 20*(pwm_max-pwm_min)
+
+    pulse_width = (pwm_max - pwm_min*((adc_reading - adc_min)/(adc_max-adc_min)))*20.0
+
+    return pulse_width
+                
 class CommandIssuer(threading.Thread):
     def __init__(self, queue):
         threading.Thread.__init__(self)
@@ -86,16 +99,48 @@ class CommandIssuer(threading.Thread):
         while running:
             if not self.command_queue.empty():
                 params = self.command_queue.get().split()
-                num = float(params[4])
-                pinky_pulse_width = 100
-                if ( num < 735 ):
-                    pinky_pulse_width = 100
-                else:
-                    pinky_pulse_width = (10.0 - 5.0*((num-735.0)/288.0))*20.0
+
+                (thumb_adc_reading,
+                 index_adc_reading,
+                 mid_adc_reading,
+                 ring_adc_reading,
+                 pinky_adc_reading) = (float(params[0]),
+                                       float(params[1]),
+                                       float(params[2]),
+                                       float(params[3]),
+                                       float(params[4]))
+
+                # Calculate pulse widths based on adc values from sleeve
+
+                thumb_pw = calcPulseWidth(thumb_adc_reading, 725, 1023, 7.5, 11.5)
+                index_pw = calcPulseWidth(index_adc_reading, 745, 930, 8.0, 11.5)
+                mid_pw   = calcPulseWidth(mid_adc_reading, 730, 1023, 8.5, 12.5)
+                ring_pw  = calcPulseWidth(ring_adc_reading, 680, 1023, 6.4, 10.4)
+                pinky_pw = calcPulseWidth(pinky_adc_reading, 735, 1023, 6.0, 11.0)
+
+                # construct echo commands
                 
-                cmd = "echo 0=" + str(pinky_pulse_width) + " > /dev/servoblaster"
-                print cmd
-                os.system(cmd)
+                thumb_cmd = "echo 0=" + str(thumb_pw) + " > /dev/servoblaster"
+                index_cmd = "echo 1=" + str(index_pw) + " > /dev/servoblaster"
+                mid_cmd   = "echo 2=" + str(mid_pw) + " > /dev/servoblaster"
+                ring_cmd  = "echo 3=" + str(ring_pw) + " > /dev/servoblaster"
+                pinky_cmd = "echo 4=" + str(pinky_pw) + " > /dev/servoblaster"
+
+                # print for debug and monitoring
+                
+                print thumb_cmd
+                print index_cmd
+                print mid_cmd
+                print ring_cmd
+                print pinky_cmd
+
+                # Execute bash commands to write to servoblaster kernel 
+                os.system(pinky_cmd)
+                os.system(ring_cmd)
+                os.system(mid_cmd)
+                os.system(index_cmd)
+                os.system(thumb_cmd)
+                
                 
 if __name__ == "__main__": 
     s = Server(sys.argv[1]) 
