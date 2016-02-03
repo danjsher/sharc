@@ -6,9 +6,22 @@
 #include <netinet/in.h>
 #include <cstdlib>
 #include <iostream>
-#include <ostream>
+#include <thread>
+#include <string>
 
 using namespace std;
+
+void clientThread(int clientHandle) {
+
+  std::string str = "Thread messaging client";
+  cout << "Length: " << str.length() << endl;
+  cout << "Size: " << str.size() << endl;
+  write(clientHandle, str.c_str() , strlen(str.c_str())+1);
+  char buffer[1024];
+  int rcvlen = read(clientHandle, buffer, 1024);
+
+  cout << "Received: " << buffer << "from client" << endl;
+}
 
 int main(int argc, char **argv) {
 
@@ -52,15 +65,8 @@ int main(int argc, char **argv) {
     cout << "Error accepting client\n";
     exit(1);
   }
-  cout << "Sending \"testing\" to client\n";
-  write(client, "testing", 8);
-  sleep(1);
-  
-  char buffer[1024];
-  success = read(client, buffer, 1024);
 
-  cout << "received "<< buffer << "\n";
-  
-  
+  thread t = thread(clientThread, client);
+  t.join();
   
 }

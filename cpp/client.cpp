@@ -51,9 +51,11 @@ int main(int argc, char **argv) {
   }
   cout<< "Received " << buffer << "\n";
   sleep(1);
-  cout << "Sending testing to server\n";
-  write(socketHandle, "testing", 8);
 
+  char *str = "testing";
+  
+  write(socketHandle, str, 8);
+  
   close(socketHandle);
   
 }

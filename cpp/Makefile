@@ -2,13 +2,17 @@ CC=g++
 
 TARGETS=client server
 
+FLAGS=-std=c++11
+
+LIBS=-pthread
+
 all:$(TARGETS)
 
 client: client.cpp
-	$(CC) -o $@ $^
+	$(CC) $(FLAGS) -o $@ $^
 
 server: threadedserver.cpp
-	$(CC) -o $@ $^
+	$(CC) $(FLAGS) $(LIBS) -o $@ $^
 
 .PHONY: clean
 
