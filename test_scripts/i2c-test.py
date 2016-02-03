@@ -33,7 +33,6 @@ def get_y_rotation(x, y, z):
 def get_x_rotation(x, y, z):
     radians = math.atan2(y, dist(x,z))
     return math.degrees(radians)
-
 bus = smbus.SMBus(1) 
 address = 0x68
 

@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <cstdlib>
 #include <iostream>
+#include <ostream>
 
 using namespace std;
 
@@ -51,13 +52,14 @@ int main(int argc, char **argv) {
     cout << "Error accepting client\n";
     exit(1);
   }
-
+  cout << "Sending \"testing\" to client\n";
   write(client, "testing", 8);
-
+  sleep(1);
+  
   char buffer[1024];
   success = read(client, buffer, 1024);
 
-  cout << "received "<< success;
+  cout << "received "<< buffer << "\n";
   
   
   

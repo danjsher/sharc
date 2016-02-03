@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -42,7 +41,7 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  cout << "Connected to server";
+  cout << "Connected to server\n";
   
   char buffer[1024];
   success = read(socketHandle, buffer, 1024);
@@ -50,8 +49,10 @@ int main(int argc, char **argv) {
     cout << "Error receving";
     exit(1);
   }
-  cout<< "Received " << buffer
-  write(socketHandle, "testing", 7);
+  cout<< "Received " << buffer << "\n";
+  sleep(1);
+  cout << "Sending testing to server\n";
+  write(socketHandle, "testing", 8);
 
   close(socketHandle);
   
