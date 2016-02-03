@@ -8,9 +8,9 @@
 #include <cstdlib>
 #include <iostream>
 #include <math.h>
-#include "I2Cdev.h"
-#include "MPU6050_6Axis_MotionApps20.h"
-
+#include "MPU/I2Cdev.h"
+#include "MPU/MPU6050_6Axis_MotionApps20.h"
+#include "RaspberryPi-mcp3008Spi/mcp3008Spi.h"
 
 MPU6050 mpu;
 
@@ -203,9 +203,12 @@ int main(int argc, char **argv) {
   cout << "Connected to server\n";
 
   /*
-   * Connection completed. Now start to poll data and send it to server
+   * Connection completed. 
+   * Set up sensors.
    */
 
+  
+  mcp3008Spi a2d("/dev/spidev0.0",SPI_MODE_0, 1000000, 8);
   dmpSetup();
   while(1) {
     loop();

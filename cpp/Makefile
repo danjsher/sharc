@@ -8,7 +8,7 @@ LIBS=-pthread
 
 all:$(TARGETS)
 
-client: client.cpp I2Cdev.cpp MPU6050.cpp
+client: client.cpp MPU/I2Cdev.cpp MPU/MPU6050.cpp RaspberryPi-mcp3008Spi/mcp3008Spi.cpp
 	$(CC) $(FLAGS) -o $@ $^ -lm
 
 server: threadedserver.cpp
