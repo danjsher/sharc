@@ -13,14 +13,17 @@ using namespace std;
 
 void clientThread(int clientHandle) {
 
-  std::string str = "Thread messaging client";
-  cout << "Length: " << str.length() << endl;
-  cout << "Size: " << str.size() << endl;
-  write(clientHandle, str.c_str() , strlen(str.c_str())+1);
+  
   char buffer[1024];
-  int rcvlen = read(clientHandle, buffer, 1024);
-
-  cout << "Received: " << buffer << "from client" << endl;
+  while(1) {
+    int rcvlen = read(clientHandle, buffer, 1024);
+    
+    cout << "Received: \"" << rcvlen << "\" from client" << endl;
+    if(strcmp(buffer, "quit") == 0) {
+      cout << "Received quit command. Exiting..." << endl;
+      return;
+    }
+  }
 }
 
 int main(int argc, char **argv) {

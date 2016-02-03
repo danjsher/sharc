@@ -8,8 +8,8 @@ LIBS=-pthread
 
 all:$(TARGETS)
 
-client: client.cpp
-	$(CC) $(FLAGS) -o $@ $^
+client: client.cpp I2Cdev.cpp MPU6050.cpp
+	$(CC) $(FLAGS) -o $@ $^ -lm
 
 server: threadedserver.cpp
 	$(CC) $(FLAGS) $(LIBS) -o $@ $^
