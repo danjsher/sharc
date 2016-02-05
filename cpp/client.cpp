@@ -8,9 +8,28 @@
 #include <cstdlib>
 #include <iostream>
 #include <math.h>
+#include <sstream>
+
 #include "MPU/I2Cdev.h"
 #include "MPU/MPU6050_6Axis_MotionApps20.h"
 #include "RaspberryPi-mcp3008Spi/mcp3008Spi.h"
+
+/************************************* OUR CODE **********************************************/
+
+const char* packetToCStr(float packet[], int length) {
+  std::stringstream buf;
+
+  for(int i = 0; i < length; i++) {
+    buf << packet[i] << " ";
+  }
+
+  const std::string& tmp = buf.str();
+  const char* ret = tmp.c_str();
+  return ret;
+  
+}
+
+/************************************* MPU CODE **********************************************/
 
 MPU6050 mpu;
 
@@ -206,12 +225,17 @@ int main(int argc, char **argv) {
    * Connection completed. 
    * Set up sensors.
    */
-
-  
+  char* test = "testing";
+  float packet[8] = {4.234, 5.67, 8.88, 7.345, 6.777, 8.90876, 2.354, 547.345};
+  const char* txData = packetToCStr(packet, 8);
+  cout << txData << endl;
+  write(socketHandle, txData, strlen(txData));
+  /*
   mcp3008Spi a2d("/dev/spidev0.0",SPI_MODE_0, 1000000, 8);
   dmpSetup();
   while(1) {
     loop();
   }
+  */
   close(socketHandle);
 }

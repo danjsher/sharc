@@ -14,7 +14,10 @@ client: client.cpp MPU/I2Cdev.cpp MPU/MPU6050.cpp RaspberryPi-mcp3008Spi/mcp3008
 server: threadedserver.cpp CommandPacket.cpp
 	$(CC) $(FLAGS) $(LIBS) -o $@ $^
 
+tester: test/test.cpp CommandPacket.cpp
+	$(CC) $(FLAGS) $(LIBS) -o $@ $^
+
 .PHONY: clean
 
 clean:
-	rm client server *~
+	rm client server test *~

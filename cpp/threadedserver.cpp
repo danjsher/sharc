@@ -13,14 +13,31 @@
 
 using namespace std;
 
-void clientThread(int clientHandle) {
+int parse_packet(char* input, float* output, int len) {
+  char *str_token = strtok(input, " ");
 
-  
+  int i = 0;
+
+  while(str_token != NULL && i < len) {
+    output[i++] = atof(str_token);
+    str_token = strtok(NULL, " ");
+  }
+
+  return i;
+}
+
+void clientThread(int clientHandle) {
   char buffer[1024];
-  while(1) {
-    int rcvlen = read(clientHandle, buffer, 1024);
-    
+  int rcvlen = 0;
+  while(rcvlen = read(clientHandle, buffer, 1024)) {
     cout << "Received: \"" << rcvlen << "\" from client" << endl;
+
+    float rxData[8] = {0};
+
+    int stat = parse_packet(buffer, rxData, 8);
+
+    cout << "First element " << rxData[0] << endl;
+    
     if(strcmp(buffer, "quit") == 0) {
       cout << "Received quit command. Exiting..." << endl;
       return;
@@ -28,7 +45,11 @@ void clientThread(int clientHandle) {
   }
 }
 
-void commandIssuer() { //need to feed this a queue object
+void cmdIssuer() {
+  while(1) {
+    cout << "Hi, I'm the command issuer thread." << endl;
+    sleep(3);
+  }
 }
 
 int main(int argc, char **argv) {
@@ -65,16 +86,22 @@ int main(int argc, char **argv) {
     cout << "Error while listening on socket";
     exit(1);
   }
-  
-  struct sockaddr_in clientaddr;
-  socklen_t clientaddr_len;
-  int client = accept(socketHandle, (struct sockaddr*) &clientaddr, &clientaddr_len);
-  if(client < 0) {
-    cout << "Error accepting client\n";
-    exit(1);
-  }
 
-  thread t = thread(clientThread, client);
-  t.join();
+
+  /* Dispatching command issuer thread */
+  thread ci = thread(cmdIssuer);
+  ci.detach();
   
+  while(1) {
+    struct sockaddr_in clientaddr;
+    socklen_t clientaddr_len;
+    int client = accept(socketHandle, (struct sockaddr*) &clientaddr, &clientaddr_len);
+    if(client < 0) {
+      cout << "Error accepting client\n";
+      exit(1);
+    }
+    
+    thread t = thread(clientThread, client);
+    t.detach();
+  }
 }

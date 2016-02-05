@@ -1,7 +1,7 @@
 #include <cstdlib>
 #include <iostream>
-#include "CommandPacket.h"
-#include "ThreadQueue.h"
+#include "../CommandPacket.h"
+#include "../ThreadQueue.h"
 
 using namespace std;
 
