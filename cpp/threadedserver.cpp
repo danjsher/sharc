@@ -8,6 +8,8 @@
 #include <iostream>
 #include <thread>
 #include <string>
+#include "CommandPacket.h"
+#include "ThreadQueue.h"
 
 using namespace std;
 
@@ -24,6 +26,9 @@ void clientThread(int clientHandle) {
       return;
     }
   }
+}
+
+void commandIssuer() { //need to feed this a queue object
 }
 
 int main(int argc, char **argv) {
