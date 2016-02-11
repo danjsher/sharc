@@ -8,10 +8,16 @@
 #include <iostream>
 #include <thread>
 #include <string>
+#include <mutex>
+#include <list>
+
 #include "CommandPacket.h"
-#include "ThreadQueue.h"
 
 using namespace std;
+
+std::mutex queueMutex;
+
+std::list<float *> cmdQueue;
 
 int parse_packet(char* input, float* output, int len) {
   char *str_token = strtok(input, " ");
@@ -36,7 +42,17 @@ void clientThread(int clientHandle) {
 
     int stat = parse_packet(buffer, rxData, 8);
 
-    cout << "First element " << rxData[0] << endl;
+    //put data on queue
+    cout << "locking queue" << endl;
+    queueMutex.lock();
+    cmdQueue.push_back(rxData);
+    cout << "Data pushed onto queue, unlocking" << endl;
+    queueMutex.unlock();
+    
+    for(int i = 0; i < 8; i++) 
+      cout << "rx data " << rxData[i] << endl;
+
+    
     
     if(strcmp(buffer, "quit") == 0) {
       cout << "Received quit command. Exiting..." << endl;
@@ -48,7 +64,17 @@ void clientThread(int clientHandle) {
 void cmdIssuer() {
   while(1) {
     cout << "Hi, I'm the command issuer thread." << endl;
-    sleep(3);
+
+    queueMutex.lock();
+    cout << "Empyting the queue" << endl;
+    while(!cmdQueue.empty()){
+      float *tmp = cmdQueue.front();
+      cmdQueue.pop_front();
+      cout << tmp[0] << endl;
+    }
+    queueMutex.unlock();
+    cout << "done emptying queue" << endl;
+    sleep(10);
   }
 }
 
