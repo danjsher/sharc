@@ -14,20 +14,9 @@
 #include "MPU/MPU6050_6Axis_MotionApps20.h"
 #include "RaspberryPi-mcp3008Spi/mcp3008Spi.h"
 
-/************************************* OUR CODE **********************************************/
+/************************************* MCP3008 INIT ******************************************/
 
-const char* packetToCStr(float packet[], int length) {
-  std::stringstream buf;
-
-  for(int i = 0; i < length; i++) {
-    buf << packet[i] << " ";
-  }
-
-  const std::string& tmp = buf.str();
-  const char* ret = tmp.c_str();
-  return ret;
-  
-}
+  mcp3008Spi a2d("/dev/spidev0.0",SPI_MODE_0, 1000000, 8);
 
 /************************************* MPU CODE **********************************************/
 
@@ -177,6 +166,41 @@ void loop() {
         printf("\n");
     }
 }
+/************************************* OUR CODE **********************************************/
+
+const char* packetToCStr(float packet[], int length) {
+  std::stringstream buf;
+
+  for(int i = 0; i < length; i++) {
+    buf << packet[i] << " ";
+  }
+
+  const std::string& tmp = buf.str();
+  const char* ret = tmp.c_str();
+  return ret;
+  
+}
+
+int readAdc(int *input) {
+
+  unsigned char data[3];
+  int a2dVal;
+  
+  for(int a2dChannel = 0; a2dChannel < 5; a2dChannel++) {
+    data[0] = 1; // first byte start bit
+    data[1] = 0b10000000 |(((a2dChannel & 7) << 4)); //channel
+    data[2] = 0; //don't care
+  
+    a2d.spiWriteRead(data, sizeof(data));
+    
+    a2dVal = 0;
+    a2dVal = (data[1] << 8) & 0b1100000000;
+    a2dVal |= (data[2] & 0xff);
+
+    input[a2dChannel] = a2dVal;
+  }
+  return 1;
+}
 
 /*********************************************** MAIN **********************************************/
 
@@ -231,26 +255,12 @@ int main(int argc, char **argv) {
   cout << txData << endl;
   write(socketHandle, txData, strlen(txData));
   
-  mcp3008Spi a2d("/dev/spidev0.0",SPI_MODE_0, 1000000, 8);
 
-  int i = 20;
-  int a2dVal = 0;
-  int a2dChannel = 0;
-  unsigned char data[3];
+  int adcVals[5] = {0};
 
-  while(i > 0) {
-    data[0] = 1; // first byte start bit
-    data[1] = 0b10000000 |(((a2dChannel & 7) << 4));
-    data[2] = 0;
-
-    a2d.spiWriteRead(data, sizeof(data));
-
-    a2dVal = 0;
-    a2dVal = (data[1] << 8) & 0b1100000000;
-    a2dVal |= (data[2] & 0xff);
-    sleep(1);
-    cout << "The result is: " << a2dVal << endl;
-    i--;
+  while(true) {
+    readAdc(adcVals);
+    cout << adcVals[0] << " | " << adcVals[1] << " | " << adcVals[2] << " | " << adcVals[3] << " | " << adcVals[4] << " | " << endl;
   }
   
   /*
