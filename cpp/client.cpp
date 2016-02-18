@@ -209,6 +209,11 @@ using namespace std;
 int main(int argc, char **argv) {
 
 
+  if(argc != 2) {
+    cout << "wrong # of args" << endl << "useage: ./client <host_ip_addr>" << endl;
+    exit(0);
+  }
+  
   /*
    * Setting up connection to server
    */
@@ -222,7 +227,7 @@ int main(int argc, char **argv) {
   struct sockaddr_in clientaddr;
   int clientaddr_len;
   memset(&clientaddr, 0, sizeof(clientaddr));
-  char* clientHost = "localhost";
+  char* clientHost = argv[1];
   
   struct hostent *host = gethostbyname(clientHost);
 
@@ -247,7 +252,6 @@ int main(int argc, char **argv) {
 
   /*
    * Connection completed. 
-   * Set up sensors.
    */
 
   float packet[8] = {4.234, 5.67, 8.88, 7.345, 6.777, 8.90876, 2.354, 547.345};

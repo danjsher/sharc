@@ -10,7 +10,7 @@
 #include <string>
 #include <mutex>
 #include <list>
-
+#include <arpa/inet.h>
 #include "CommandPacket.h"
 
 using namespace std;
@@ -123,6 +123,15 @@ void cmdIssuer() {
 
 int main(int argc, char **argv) {
 
+
+  if(argc != 2) {
+    cout << "invalid # of args" << endl << "usage: ./server <host_ip_addr>" << endl;
+    exit(0);
+  }
+
+  cout << argv[1] << endl;
+  char *ipAddr = argv[1];
+  
   int listenPort = 12345;
 
   int socketHandle = socket(AF_INET, SOCK_STREAM, 0);
@@ -135,7 +144,8 @@ int main(int argc, char **argv) {
   memset(&myaddr, 0, sizeof(struct sockaddr_in));
   myaddr.sin_family = AF_INET;
   myaddr.sin_port = htons(listenPort);
-  myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  inet_pton(AF_INET, ipAddr, &(myaddr.sin_addr));
+  //myaddr.sin_addr.s_addr = 
 
   int success = bind(socketHandle,  (struct sockaddr*) &myaddr, sizeof(myaddr));
 
