@@ -249,7 +249,7 @@ int main(int argc, char **argv) {
    * Connection completed. 
    * Set up sensors.
    */
-  char* test = "testing";
+
   float packet[8] = {4.234, 5.67, 8.88, 7.345, 6.777, 8.90876, 2.354, 547.345};
   const char* txData = packetToCStr(packet, 8);
   cout << txData << endl;
@@ -260,7 +260,17 @@ int main(int argc, char **argv) {
 
   while(true) {
     readAdc(adcVals);
-    cout << adcVals[0] << " | " << adcVals[1] << " | " << adcVals[2] << " | " << adcVals[3] << " | " << adcVals[4] << " | " << endl;
+    
+    packet[0] = (float) adcVals[0];
+    packet[1] = (float) adcVals[1];
+    packet[2] = (float) adcVals[2];
+    packet[3] = (float) adcVals[3];
+    packet[4] = (float) adcVals[4];
+    
+    cout << packet[0] << " | " << packet[1] << " | " << packet[2] << " | " << packet[3] << " | " << adcVals[4] << " | " << endl;
+    txData = packetToCStr(packet, 8);
+    write(socketHandle, txData, strlen(txData));
+    sleep(.05);
   }
   
   /*

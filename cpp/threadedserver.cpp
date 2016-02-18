@@ -36,45 +36,88 @@ void clientThread(int clientHandle) {
   char buffer[1024];
   int rcvlen = 0;
   while(rcvlen = read(clientHandle, buffer, 1024)) {
-    cout << "Received: \"" << rcvlen << "\" from client" << endl;
-
     float rxData[8] = {0};
 
     int stat = parse_packet(buffer, rxData, 8);
 
-    //put data on queue
-    cout << "locking queue" << endl;
+    // put data on queue
+    // cout << "locking queue" << endl;
     queueMutex.lock();
     cmdQueue.push_back(rxData);
-    cout << "Data pushed onto queue, unlocking" << endl;
+    // cout << "Data pushed onto queue, unlocking" << endl;
     queueMutex.unlock();
-    
+    /*
     for(int i = 0; i < 8; i++) 
       cout << "rx data " << rxData[i] << endl;
-
-    
-    
-    if(strcmp(buffer, "quit") == 0) {
-      cout << "Received quit command. Exiting..." << endl;
-      return;
-    }
+    */
   }
+}
+
+float calcFingerPwm(float adcVal, float adcMin, float adcMax, float pwmMin, float pwmMax) {
+  
+  if(adcVal < adcMin) {
+    return 20.0*pwmMax;
+  } else if (adcVal > adcMax) {
+    return (pwmMax-pwmMin)*20.0;
+  }
+
+  float  pulseWidth = (pwmMax - pwmMin*((adcVal - adcMin)/(adcMax - adcMin)))*20.0;
+
+  return pulseWidth;
+    
 }
 
 void cmdIssuer() {
   while(1) {
     cout << "Hi, I'm the command issuer thread." << endl;
-
+    bool validData = false;
+    float *readings;
     queueMutex.lock();
-    cout << "Empyting the queue" << endl;
+    cout << "Dequeing next command" << endl;
+    if(!cmdQueue.empty()) {
+      readings = cmdQueue.front();
+      cmdQueue.pop_front();
+      validData = true;
+    }
+    queueMutex.unlock();
+
+    if(validData) {
+      // Calculate pulse widths based on adc values from sleeve
+      float thumbPwm  = calcFingerPwm(readings[0], 725, 1023, 7.5, 11.5);
+      float indexPwm  = calcFingerPwm(readings[1], 745, 930, 8.0, 11.5);
+      float middlePwm = calcFingerPwm(readings[2], 730, 1023, 8.5, 12.5);
+      float ringPwm   = calcFingerPwm(readings[3], 680, 1023, 6.4, 10.4);
+      float pinkyPwm  = calcFingerPwm(readings[4], 735, 1023, 6.0, 11.0);
+      
+      // construct echo commands
+      
+      string thumbCmd  = "echo 0=" + to_string(thumbPwm) + " > /dev/servoblaster";
+      string indexCmd  = "echo 1=" + to_string(indexPwm) + " > /dev/servoblaster";
+      string middleCmd = "echo 2=" + to_string(middlePwm) + " > /dev/servoblaster";
+      string ringCmd   = "echo 3=" + to_string(ringPwm) + " > /dev/servoblaster";
+      string pinkyCmd  = "echo 4=" + to_string(pinkyPwm) + " > /dev/servoblaster";
+
+
+      cout << thumbCmd << endl << indexCmd << endl << middleCmd << endl << ringCmd << endl << pinkyCmd << endl;
+
+      system(thumbCmd.c_str());
+      system(indexCmd.c_str());
+      system(middleCmd.c_str());
+      system(ringCmd.c_str());
+      system(pinkyCmd.c_str());
+      
+    } else {
+      cout << "no data" << endl;
+    }
+    /*
     while(!cmdQueue.empty()){
       float *tmp = cmdQueue.front();
       cmdQueue.pop_front();
       cout << tmp[0] << endl;
     }
     queueMutex.unlock();
-    cout << "done emptying queue" << endl;
-    sleep(10);
+    */
+    sleep(.06);
   }
 }
 
