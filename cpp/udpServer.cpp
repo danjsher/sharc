@@ -72,6 +72,11 @@ void cmdIssuer() {
 }
 
 int main(int argc, char** argv) {
+
+  if(argc != 2) {
+    cout << "wrong # of args" << endl << "usage: ./udpServer <server_ip_addr>" << endl;
+    return 0;
+  }
   
   char *ipAddr = argv[1];
   
