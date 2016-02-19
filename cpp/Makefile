@@ -9,19 +9,19 @@ LIBS=-pthread
 
 all:$(TARGETS)
 
-client: client.cpp MPU/I2Cdev.cpp MPU/MPU6050.cpp RaspberryPi-mcp3008Spi/mcp3008Spi.cpp CommandPacket.cpp 
+client: client.cpp MPU/I2Cdev.cpp MPU/MPU6050.cpp RaspberryPi-mcp3008Spi/mcp3008Spi.cpp
 	$(CC) $(FLAGS) -o $@ $^ -lm
 
-server: threadedserver.cpp CommandPacket.cpp
+server: threadedserver.cpp 
 	$(CC) $(FLAGS) $(LIBS) -o $@ $^
 
-udpClient: udpClient.cpp MPU/I2Cdev.cpp MPU/MPU6050.cpp RaspberryPi-mcp3008Spi/mcp3008Spi.cpp CommandPacket.cpp 
+udpClient: udpClient.cpp MPU/I2Cdev.cpp MPU/MPU6050.cpp RaspberryPi-mcp3008Spi/mcp3008Spi.cpp 
 	$(CC) $(FLAGS) -o $@ $^ -lm
 
-udpServer: udpServer.cpp CommandPacket.cpp
+udpServer: udpServer.cpp 
 	$(CC) $(FLAGS) $(LIBS) -o $@ $^
 
-tester: test/test.cpp CommandPacket.cpp
+tester: test/test.cpp 
 	$(CC) $(FLAGS) $(LIBS) -o $@ $^
 
 .PHONY: clean
