@@ -83,7 +83,7 @@ void cmdIssuer() {
 
     if(validData) {
       // Calculate pulse widths based on adc values from sleeve
-      float thumbPwm  = calcFingerPwm(readings[0], 725, 1023, 7.5, 11.5);
+      float thumbPwm  = 7.5*((readings[0] - 725)/(1023 - 725))*20.0;
       float indexPwm  = calcFingerPwm(readings[1], 745, 930, 8.0, 11.5);
       float middlePwm = calcFingerPwm(readings[2], 730, 1023, 8.5, 12.5);
       float ringPwm   = calcFingerPwm(readings[3], 680, 1023, 6.4, 10.4);

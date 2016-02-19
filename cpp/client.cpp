@@ -168,9 +168,11 @@ void loop() {
 }
 /************************************* OUR CODE **********************************************/
 
-const char* packetToCStr(float packet[], int length) {
+const char* packetToCStr(int packetNum, float packet[], int length) {
   std::stringstream buf;
 
+  buf << packetNum << " ";
+  
   for(int i = 0; i < length; i++) {
     buf << packet[i] << " ";
   }
@@ -209,10 +211,13 @@ using namespace std;
 int main(int argc, char **argv) {
 
 
-  if(argc != 2) {
+  if(argc != 3) {
     cout << "wrong # of args" << endl << "useage: ./client <host_ip_addr>" << endl;
     exit(0);
   }
+
+  float sampleSpeed = atof(argv[2]);
+			   
   
   /*
    * Setting up connection to server
@@ -254,14 +259,12 @@ int main(int argc, char **argv) {
    * Connection completed. 
    */
 
-  float packet[8] = {4.234, 5.67, 8.88, 7.345, 6.777, 8.90876, 2.354, 547.345};
-  const char* txData = packetToCStr(packet, 8);
-  cout << txData << endl;
-  write(socketHandle, txData, strlen(txData));
-  
+  float packet[8] = {0};
+  const char* txData;
 
   int adcVals[5] = {0};
-
+  int packetNum = 0;
+  
   while(true) {
     readAdc(adcVals);
     
@@ -271,10 +274,11 @@ int main(int argc, char **argv) {
     packet[3] = (float) adcVals[3];
     packet[4] = (float) adcVals[4];
     
-    cout << packet[0] << " | " << packet[1] << " | " << packet[2] << " | " << packet[3] << " | " << adcVals[4] << " | " << endl;
-    txData = packetToCStr(packet, 8);
+
+    txData = packetToCStr(packetNum++, packet, 8);
     write(socketHandle, txData, strlen(txData));
-    sleep(.05);
+    cout << packetNum << " | " << packet[0] << " | " << packet[1] << " | " << packet[2] << " | " << packet[3] << " | " << adcVals[4] << " | " << endl;
+    sleep(sampleSpeed);
   }
   
   /*
