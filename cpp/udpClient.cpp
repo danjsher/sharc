@@ -100,13 +100,13 @@ void dmpSetup() {
 // ===                    MAIN PROGRAM LOOP                     ===
 // ================================================================
 
-void loop() {
+void dmpLoop(float *bicepYpr) {
     // if programming failed, don't try to do anything
     if (!dmpReady) return;
     // get current FIFO count
     fifoCount = mpu.getFIFOCount();
 
-    if (fifoCount == 1024) {
+    if (fifoCount >= 1024) {
         // reset so we can continue cleanly
         mpu.resetFIFO();
         printf("FIFO overflow!\n");
@@ -115,7 +115,8 @@ void loop() {
     } else if (fifoCount >= 42) {
         // read a packet from FIFO
         mpu.getFIFOBytes(fifoBuffer, packetSize);
-        
+
+	
         #ifdef OUTPUT_READABLE_QUATERNION
             // display quaternion values in easy matrix form: w x y z
             mpu.dmpGetQuaternion(&q, fifoBuffer);
@@ -128,15 +129,18 @@ void loop() {
             mpu.dmpGetEuler(euler, &q);
             printf("euler %7.2f %7.2f %7.2f    ", euler[0] * 180/M_PI, euler[1] * 180/M_PI, euler[2] * 180/M_PI);
         #endif
-
+	
         #ifdef OUTPUT_READABLE_YAWPITCHROLL
             // display Euler angles in degrees
             mpu.dmpGetQuaternion(&q, fifoBuffer);
             mpu.dmpGetGravity(&gravity, &q);
             mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
             printf("ypr  %7.2f %7.2f %7.2f    ", ypr[0] * 180/M_PI, ypr[1] * 180/M_PI, ypr[2] * 180/M_PI);
+	    bicepYpr[0] = ypr[0] * 180/M_PI;
+	    bicepYpr[1] = ypr[1] * 180/M_PI;
+	    bicepYpr[2] = ypr[2] * 180/M_PI;
         #endif
-
+	    
         #ifdef OUTPUT_READABLE_REALACCEL
             // display real acceleration, adjusted to remove gravity
             mpu.dmpGetQuaternion(&q, fifoBuffer);
@@ -169,6 +173,7 @@ void loop() {
             Serial.write(teapotPacket, 14);
             teapotPacket[11]++; // packetCount, loops at 0xFF on purpose
         #endif
+	    
         printf("\n");
     }
 }
@@ -253,23 +258,30 @@ int main(int argc, char** argv)
   remaddr.sin_family = AF_INET;
   remaddr.sin_port = htons(SERVICE_PORT);
   inet_pton(AF_INET, ipAddr, &(remaddr.sin_addr));
-  /*
-    if (inet_aton(server, &remaddr.sin_addr)==0) {
-    fprintf(stderr, "inet_aton() failed\n");
-    exit(1);
-	}
-  */
+
   /* now let's send the messages */
 
   int i = 0;
   int adcVals[5] = {0};
+  float bicepYpr[3] = {0};
+
+  // set up dmp
+  dmpSetup();
+  /*  while(1) {
+    dmpLoop(bicepYpr);
+    sleep(1);
+  }
+  */
+
   while(1) {
     readAdc(adcVals); // poll flex sensors for finger data
-    
+    dmpLoop(bicepYpr);
     printf("Sending packet %d to %s port %d\n", i, ipAddr, SERVICE_PORT);
-
+    
     //package up data into character array and send it
-    sprintf(buf, "%d %d %d %d %d %d", i++, adcVals[0], adcVals[1], adcVals[2], adcVals[3], adcVals[4]);
+    sprintf(buf, "%d %d %d %d %d %d %f %f %f", i++,
+	    adcVals[0], adcVals[1], adcVals[2], adcVals[3], adcVals[4],
+	    bicepYpr[0], bicepYpr[1], bicepYpr[2]);
     if (sendto(fd, buf, strlen(buf), 0, (struct sockaddr *)&remaddr, slen)==-1) {
       perror("sendto");
       exit(1);
