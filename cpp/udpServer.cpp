@@ -87,14 +87,17 @@ void cmdIssuer() {
       pkt = (SleevePacket *)malloc(sizeof(SleevePacket));
       parsePacket(data, pkt);
     
-      /* Debug
+      
       cout << pkt->packetNum << " "
 	   << pkt->fingerVals[0] << " "
 	   << pkt->fingerVals[1] << " "
 	   << pkt->fingerVals[2] << " "
 	   << pkt->fingerVals[3] << " "
-	   << pkt->fingerVals[4] << endl;
-      */
+	   << pkt->fingerVals[4] << " " 
+	   << pkt->bicepYpr[0] << " " 
+	   << pkt->bicepYpr[1] << " "
+	   << pkt->bicepYpr[2]<< endl;
+      
 
       // calculate each pwm signal
       float fingerPwm[5] = {0.0,
@@ -152,10 +155,14 @@ int parsePacket(char *input, SleevePacket *pkt) {
     pkt->fingerVals[i] = atoi(strToken);
   }
 
-  /*
-   * TODO
-   * next 3 will be floats for bicep yaw, pitch, roll respectively
-   */
+  // next 3 will be floats for bicep yaw, pitch, roll respectively
+  
+  for( i = 0; i < 3; i++) {
+    strToken = strtok(NULL, " ");
+    cout << "token: " << strToken << endl;
+    pkt->bicepYpr[i] = atof(strToken);
+  }
+  
   return 1;
   
 }
