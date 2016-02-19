@@ -11,22 +11,29 @@
 #include <mutex>
 #include <list>
 #include <arpa/inet.h>
-#include "CommandPacket.h"
 
 using namespace std;
 
+typedef struct SleevePacket {
+  float *data;
+  int packetNumber;
+} SleevePacket;
+
 std::mutex queueMutex;
 
-std::list<float *> cmdQueue;
+std::list<SleevePacket *> cmdQueue;
 
-int parse_packet(char* input, float* output, int len) {
+int parse_packet(char* input, SleevePacket *pkt) {
   char *str_token = strtok(input, " ");
 
   int i = 0;
 
-  while(str_token != NULL && i < len) {
-    output[i++] = atof(str_token);
+  pkt->packetNumber = atoi(str_token);
+  float adcVals[5] = {0};
+  pkt->data = adcVals;
+  while(str_token != NULL && i < 5) {
     str_token = strtok(NULL, " ");
+    pkt->data[i++] = atof(str_token);
   }
 
   return i;
@@ -35,16 +42,16 @@ int parse_packet(char* input, float* output, int len) {
 void clientThread(int clientHandle) {
   char buffer[1024];
   int rcvlen = 0;
-  while(rcvlen = read(clientHandle, buffer, 1024)) {
-    float rxData[8] = {0};
-
-    int stat = parse_packet(buffer, rxData, 8);
-
+  while(rcvlen = read(clientHandle, buffer, 18)) {
+    float rxData[9] = {0};
+    cout << "Size of data: " << rcvlen << endl;
+    SleevePacket *pkt = (SleevePacket *)malloc(sizeof(SleevePacket));
+    int stat = parse_packet(buffer, pkt);
     // put data on queue
-    // cout << "locking queue" << endl;
+    cout << "locking queue" << endl;
     queueMutex.lock();
-    cmdQueue.push_back(rxData);
-    // cout << "Data pushed onto queue, unlocking" << endl;
+    cmdQueue.push_back(pkt);
+    cout << "Data pushed onto queue, unlocking" << endl;
     queueMutex.unlock();
     /*
     for(int i = 0; i < 8; i++) 
@@ -69,25 +76,34 @@ float calcFingerPwm(float adcVal, float adcMin, float adcMax, float pwmMin, floa
 
 void cmdIssuer() {
   while(1) {
-    cout << "Hi, I'm the command issuer thread." << endl;
+    //cout << "Hi, I'm the command issuer thread." << endl;
     bool validData = false;
-    float *readings;
+    SleevePacket *readings;
     queueMutex.lock();
-    cout << "Dequeing next command" << endl;
     if(!cmdQueue.empty()) {
+      cout << "Dequeing next command" << endl;
       readings = cmdQueue.front();
       cmdQueue.pop_front();
       validData = true;
     }
     queueMutex.unlock();
-
+    if(validData) {
+      cout << "Packet Num: " << readings->packetNumber << " "
+	   << readings->data[0] << " " 
+	   << readings->data[1] << " " 
+	   << readings->data[2] << " " 
+	   << readings->data[3] << " " 
+	   << readings->data[4] << endl;
+    }
+      
+    /*
     if(validData) {
       // Calculate pulse widths based on adc values from sleeve
-      float thumbPwm  = calcFingerPwm(readings[0], 725, 1023, 7.5, 11.5);
-      float indexPwm  = calcFingerPwm(readings[1], 745, 930, 8.0, 11.5);
-      float middlePwm = calcFingerPwm(readings[2], 730, 1023, 8.5, 12.5);
-      float ringPwm   = calcFingerPwm(readings[3], 680, 1023, 6.4, 10.4);
-      float pinkyPwm  = calcFingerPwm(readings[4], 735, 1023, 6.0, 11.0);
+      float thumbPwm  = calcFingerPwm(readings[1], 725, 1023, 7.5, 11.5);
+      float indexPwm  = calcFingerPwm(readings[2], 745, 930, 8.0, 11.5);
+      float middlePwm = calcFingerPwm(readings[3], 730, 1023, 8.5, 12.5);
+      float ringPwm   = calcFingerPwm(readings[4], 680, 1023, 6.4, 10.4);
+      float pinkyPwm  = calcFingerPwm(readings[5], 735, 1023, 6.0, 11.0);
       
       // construct echo commands
       
@@ -98,7 +114,7 @@ void cmdIssuer() {
       string pinkyCmd  = "echo 4=" + to_string(pinkyPwm) + " > /dev/servoblaster";
 
 
-      cout << thumbCmd << endl << indexCmd << endl << middleCmd << endl << ringCmd << endl << pinkyCmd << endl;
+      cout << "Packet Num: " << readings[0] << endl << thumbCmd << endl << indexCmd << endl << middleCmd << endl << ringCmd << endl << pinkyCmd << endl;
 
       system(thumbCmd.c_str());
       system(indexCmd.c_str());
@@ -107,17 +123,10 @@ void cmdIssuer() {
       system(pinkyCmd.c_str());
       
     } else {
-      cout << "no data" << endl;
+      //cout << "no data" << endl;
     }
-    /*
-    while(!cmdQueue.empty()){
-      float *tmp = cmdQueue.front();
-      cmdQueue.pop_front();
-      cout << tmp[0] << endl;
-    }
-    queueMutex.unlock();
     */
-    sleep(.06);
+    //sleep(.06);
   }
 }
 
