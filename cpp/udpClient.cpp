@@ -6,6 +6,12 @@
 #include <arpa/inet.h>
 #include <iostream>
 #include <unistd.h>
+#include <math.h>
+#include <sstream>
+
+#include "MPU/I2Cdev.h"
+#include "MPU/MPU6050_6Axis_MotionApps20.h"
+#include "RaspberryPi-mcp3008Spi/mcp3008Spi.h"
 
 #define SERVICE_PORT 12345
 
@@ -13,10 +19,6 @@
 #define MSGS 5	/* number of messages to send */
 
 using namespace std;
-
-#include "MPU/I2Cdev.h"
-#include "MPU/MPU6050_6Axis_MotionApps20.h"
-#include "RaspberryPi-mcp3008Spi/mcp3008Spi.h"
 
 /************************************* MCP3008 INIT ******************************************/
 
@@ -222,7 +224,7 @@ int main(int argc, char** argv)
   char *ipAddr = argv[1];
   float samplePeriod = atof(argv[2]);
   struct sockaddr_in myaddr, remaddr;
-  int fd, i, slen=sizeof(remaddr);
+  int fd, slen=sizeof(remaddr);
   char buf[BUFLEN];	/* message buffer */
   int recvlen;		/* # bytes in acknowledgement message */
 
@@ -259,11 +261,15 @@ int main(int argc, char** argv)
   */
   /* now let's send the messages */
 
-
-
-  for (;;) {
+  int i = 0;
+  int adcVals[5] = {0};
+  while(1) {
+    readAdc(adcVals); // poll flex sensors for finger data
+    
     printf("Sending packet %d to %s port %d\n", i, ipAddr, SERVICE_PORT);
-    sprintf(buf, "This is packet %d", i++);
+
+    //package up data into character array and send it
+    sprintf(buf, "%d %d %d %d %d %d", i++, adcVals[0], adcVals[1], adcVals[2], adcVals[3], adcVals[4]);
     if (sendto(fd, buf, strlen(buf), 0, (struct sockaddr *)&remaddr, slen)==-1) {
       perror("sendto");
       exit(1);
