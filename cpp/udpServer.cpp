@@ -12,10 +12,40 @@
 #include <thread>
 #include <string>
 
+
+// Servoblaster pin assignments
+#define THUMB  0
+#define INDEX  5
+#define MIDDLE 6
+#define RING   3
+#define PINKY  7
+
+#define SHOULDER_ROTATION 8
+#define SHOULDER_FLEXION  9
+
+// network parameters
 #define BUFSIZE 1024
 #define PORT 12345
 
+//settings for armMode
+#define REALTIME 1
+#define PLAYBACK 0
+
+#define STOP 0
+#define RECORD 1
+#define PLAY 2
+
 using namespace std;
+
+int servoPins[7] = {
+  THUMB,
+  INDEX,
+  MIDDLE,
+  RING,
+  PINKY,
+  SHOULDER_ROTATION,
+  SHOULDER_FLEXION
+};
 
 // struct for storing parsed data
 typedef struct SleevePacket {
@@ -31,6 +61,9 @@ float calcFingerPwm(int adcVal, float adcMin, float adcMax, float pwmMin, float 
 
 mutex queueMutex; // locking queue for receiving and issuing commands
 list<char *> cmdQueue; //queue for storing input
+
+int armMode = REALTIME; //initially start in real time mode
+int playBack = STOP;
 
 /*
  * Thread for receving data from sleeve
@@ -74,6 +107,9 @@ void cmdIssuer() {
   SleevePacket *pkt;
   char *data;
   bool validData = false; //only do calcs if data was found in queue
+
+  float increasingPitch = 0.0;
+  float prevPitch = 0.0;
   while(1) {
     queueMutex.lock();
     if(!cmdQueue.empty()) {
@@ -81,7 +117,7 @@ void cmdIssuer() {
       cmdQueue.pop_front();
       validData = true;
     }
-    if(validData) {
+    if(validData && ((playBack == PLAY && armMode == PLAYBACK) || (armMode == REALTIME))) {
       
       //put packet into pkt struct
       pkt = (SleevePacket *)malloc(sizeof(SleevePacket));
@@ -99,20 +135,46 @@ void cmdIssuer() {
 	   << pkt->bicepYpr[2]<< endl;
       
 
+      
       // calculate each pwm signal
-      float fingerPwm[5] = {0.0,
-			    calcFingerPwm(pkt->fingerVals[1], 745, 930, 8.0, 11.5),
-			    calcFingerPwm(pkt->fingerVals[2], 730, 1023, 9.5, 13.0),
-			    calcFingerPwm(pkt->fingerVals[3], 680, 1023, 6.4, 10.4),
-			    calcFingerPwm(pkt->fingerVals[4], 735, 1023, 7.0, 13.0)};
+      float pwmSigs[7] = {0.0,
+			  calcFingerPwm(pkt->fingerVals[1], 745, 930, 8.0, 11.5),
+			  calcFingerPwm(pkt->fingerVals[2], 730, 1023, 9.5, 13.0),
+			  calcFingerPwm(pkt->fingerVals[3], 680, 1023, 6.4, 10.4),
+			  calcFingerPwm(pkt->fingerVals[4], 735, 1023, 7.0, 13.0),
+			  0.0, //shoulder rotation
+			  0.0}; //shoulder flexion
+      
+      // thumb calculation
+      pwmSigs[0] = 11.5*((pkt->fingerVals[0] - 725.0)/(1023.0 - 725.0))*20.0;
+
+      // shoulder rotation calc
+      if( pkt->bicepYpr[2] < 0.0) {
+	pwmSigs[5] = pkt->bicepYpr[2] + 130.0;
+      } else if (pkt->bicepYpr[2] > 50.0 && pkt->bicepYpr[2] < 60.0 ) {
+	pwmSigs[5] = pkt->bicepYpr[2] + 180.0;
+      } else if (pkt->bicepYpr[2] > 0.0 && pkt->bicepYpr[2] < 50.0) {
+	pwmSigs[5] = pkt->bicepYpr[2] + 140.0;
+      }
+
+      float increasingPitch = 1.0;
+
+      if(pkt->bicepYpr[1] > 0.0 && pkt->bicepYpr[1]  < 70.0 && (pkt->bicepYpr[1] - prevPitch)  > 0.0) {
+	pwmSigs[6] = pkt->bicepYpr[1] + 70.0;
+      } else if (pkt->bicepYpr[1] >= 70.0) {
+	pwmSigs[6] = 140.0;
+	cout << "max pitch reached" << endl;
+      } else if ( pkt->bicepYpr[1] <= 0.0 ) {
+	pkt->bicepYpr[1] = 70.0;
+      }
+
       
 
-      fingerPwm[0] = 11.5*((pkt->fingerVals[0] - 725.0)/(1023.0 - 725.0))*20.0;
       
-      string cmds[5];
-      
-      for(int i = 0; i < 5; i++) {
-	cmds[i] = "echo " + to_string(i) + "=" + to_string(fingerPwm[i]) + " > /dev/servoblaster";
+      string cmds[7];
+
+      for(int i = 0; i < 7; i++) {
+	cmds[i] = "echo " + to_string(servoPins[i]) + "=" + to_string(pwmSigs[i]) + " > /dev/servoblaster";
 	cout << cmds[i] << endl;
 	system(cmds[i].c_str());
       }
