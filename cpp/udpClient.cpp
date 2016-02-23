@@ -9,6 +9,8 @@
 #include <math.h>
 #include <sstream>
 
+
+#include <wiringPi.h>
 #include "MPU/I2Cdev.h"
 #include "MPU/MPU6050_6Axis_MotionApps20.h"
 #include "RaspberryPi-mcp3008Spi/mcp3008Spi.h"
@@ -267,18 +269,16 @@ int main(int argc, char** argv)
 
   // set up dmp
   dmpSetup();
-  /*  while(1) {
-    dmpLoop(bicepYpr);
-    sleep(1);
-  }
-  */
-
+  
+  //main loop
   while(1) {
     readAdc(adcVals); // poll flex sensors for finger data
-    dmpLoop(bicepYpr);
-    printf("Sending packet %d to %s port %d\n", i, ipAddr, SERVICE_PORT);
+    cout << adcVals[0] << " " << adcVals[1] << " " << adcVals[2] << " " << adcVals[3] << " " << adcVals[4] << endl;
+   dmpLoop(bicepYpr);
     
-    //package up data into character array and send it
+    //printf("Sending packet %d to %s port %d\n", i, ipAddr, SERVICE_PORT);
+   
+   //package up data into character array and send it
     sprintf(buf, "%d %d %d %d %d %d %f %f %f", i++,
 	    adcVals[0], adcVals[1], adcVals[2], adcVals[3], adcVals[4],
 	    bicepYpr[0], bicepYpr[1], bicepYpr[2]);
@@ -291,7 +291,7 @@ int main(int argc, char** argv)
     recvlen = recvfrom(fd, buf, BUFLEN, 0, (struct sockaddr *)&remaddr, (socklen_t *)&slen);
     if (recvlen >= 0) {
     buf[recvlen] = 0;	// expect a printable string - terminate it 
-      printf("received message: \"%s\"\n", buf);
+    //printf("received message: \"%s\"\n", buf);
     }
     sleep(samplePeriod);
   }

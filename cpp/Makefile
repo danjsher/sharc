@@ -15,8 +15,8 @@ client: client.cpp MPU/I2Cdev.cpp MPU/MPU6050.cpp RaspberryPi-mcp3008Spi/mcp3008
 server: threadedserver.cpp 
 	$(CC) $(FLAGS) $(LIBS) -o $@ $^
 
-udpClient: udpClient.cpp MPU/I2Cdev.cpp MPU/MPU6050.cpp RaspberryPi-mcp3008Spi/mcp3008Spi.cpp 
-	$(CC) $(FLAGS) -o $@ $^ -lm
+udpClient: udpClient.cpp MPU/I2Cdev.cpp MPU/MPU6050.cpp RaspberryPi-mcp3008Spi/mcp3008Spi.cpp
+	$(CC) $(FLAGS) -o $@ $^ -lm -lwiringPi
 
 udpServer: udpServer.cpp 
 	$(CC) $(FLAGS) $(LIBS) -o $@ $^
