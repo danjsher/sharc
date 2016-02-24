@@ -23,6 +23,8 @@
 #define SHOULDER_ROTATION 8
 #define SHOULDER_FLEXION  9
 
+#define BICEP_FLEX 10
+
 // network parameters
 #define BUFSIZE 1024
 #define PORT 12345
@@ -35,22 +37,25 @@
 #define RECORD 1
 #define PLAY 2
 
+#define PWM_SIGS 8
+
 using namespace std;
 
-int servoPins[7] = {
+int servoPins[PWM_SIGS] = {
   THUMB,
   INDEX,
   MIDDLE,
   RING,
   PINKY,
   SHOULDER_ROTATION,
-  SHOULDER_FLEXION
+  SHOULDER_FLEXION,
+  BICEP_FLEX
 };
 
 // struct for storing parsed data
 typedef struct SleevePacket {
   int   packetNum;
-  int   fingerVals[5];
+  int   adcVals[6];
   float bicepYpr[3];
 } SleevePacket;
 
@@ -125,11 +130,12 @@ void cmdIssuer() {
     
       
       cout << pkt->packetNum << " "
-	   << pkt->fingerVals[0] << " "
-	   << pkt->fingerVals[1] << " "
-	   << pkt->fingerVals[2] << " "
-	   << pkt->fingerVals[3] << " "
-	   << pkt->fingerVals[4] << " " 
+	   << pkt->adcVals[0] << " "
+	   << pkt->adcVals[1] << " "
+	   << pkt->adcVals[2] << " "
+	   << pkt->adcVals[3] << " "
+	   << pkt->adcVals[4] << " "
+	   << pkt->adcVals[5] << " "
 	   << pkt->bicepYpr[0] << " " 
 	   << pkt->bicepYpr[1] << " "
 	   << pkt->bicepYpr[2]<< endl;
@@ -137,16 +143,17 @@ void cmdIssuer() {
 
       
       // calculate each pwm signal
-      float pwmSigs[7] = {0.0,
-			  calcFingerPwm(pkt->fingerVals[1], 745, 930, 8.0, 11.5),
-			  calcFingerPwm(pkt->fingerVals[2], 730, 1023, 9.5, 13.0),
-			  calcFingerPwm(pkt->fingerVals[3], 680, 1023, 6.4, 10.4),
-			  calcFingerPwm(pkt->fingerVals[4], 735, 1023, 7.0, 13.0),
-			  0.0, //shoulder rotation
-			  0.0}; //shoulder flexion
+      float pwmSigs[PWM_SIGS] = {0.0,
+			  calcFingerPwm(pkt->adcVals[1], 745, 930, 8.0, 11.5),
+			  calcFingerPwm(pkt->adcVals[2], 730, 1023, 9.5, 13.0),
+			  calcFingerPwm(pkt->adcVals[3], 680, 1023, 6.4, 10.4),
+			  calcFingerPwm(pkt->adcVals[4], 735, 1023, 7.0, 13.0),
+			  0.0,  // shoulder rotation
+			  0.0,  // shoulder flex
+			  0.0}; // bicep flex
       
       // thumb calculation
-      pwmSigs[0] = 11.5*((pkt->fingerVals[0] - 725.0)/(1023.0 - 725.0))*20.0;
+      pwmSigs[0] = 11.5*((pkt->adcVals[0] - 725.0)/(1023.0 - 725.0))*20.0;
 
       // shoulder rotation calc
       if( pkt->bicepYpr[2] < 0.0) {
@@ -157,6 +164,7 @@ void cmdIssuer() {
 	pwmSigs[5] = pkt->bicepYpr[2] + 140.0;
       }
 
+      // shoulder flex calc
       float increasingPitch = 1.0;
 
       if(pkt->bicepYpr[1] > 0.0 && pkt->bicepYpr[1]  < 70.0 && (pkt->bicepYpr[1] - prevPitch)  > 0.0) {
@@ -168,12 +176,12 @@ void cmdIssuer() {
 	pkt->bicepYpr[1] = 70.0;
       }
 
+      // bicep flex calc
+      // pwmSigs[7] =  
       
+      string cmds[PWM_SIGS];
 
-      
-      string cmds[7];
-
-      for(int i = 0; i < 7; i++) {
+      for(int i = 0; i < PWM_SIGS; i++) {
 	cmds[i] = "echo " + to_string(servoPins[i]) + "=" + to_string(pwmSigs[i]) + " > /dev/servoblaster";
 	cout << cmds[i] << endl;
 	system(cmds[i].c_str());
@@ -188,6 +196,8 @@ void cmdIssuer() {
   } // while(1)
 }
 
+// These work for index - pinky, thumb is calculated separately because servo was reversed
+
 float calcFingerPwm(int adcVal, float adcMin, float adcMax, float pwmMin, float pwmMax) {
 
   if(adcVal < adcMin) {
@@ -201,6 +211,10 @@ float calcFingerPwm(int adcVal, float adcMin, float adcMax, float pwmMin, float 
   return pulseWidth;
 }
 
+// Packet received from client is a space separated string
+// Format:
+// | Packet Number | Finger ADC Vals (5 of them) | Bicep ADC Val | Bicep Yaw | Bicep Pitch | Bicep Roll |
+
 int parsePacket(char *input, SleevePacket *pkt) {
 
   char *strToken = strtok(input, " "); // split on space
@@ -210,11 +224,12 @@ int parsePacket(char *input, SleevePacket *pkt) {
   // first item is packet #
   pkt->packetNum = atoi(strToken);
 
-  // next 5 items are finger adc values thumb = 0, index = 1, etc...
-
-  for(i = 0; i < 5; i++) {
+  // next 6 items are adc values thumb = 0, index = 1, etc...
+  // 5 = bicep adc index
+  
+  for(i = 0; i < 6; i++) {
     strToken = strtok(NULL, " ");
-    pkt->fingerVals[i] = atoi(strToken);
+    pkt->adcVals[i] = atoi(strToken);
   }
 
   // next 3 will be floats for bicep yaw, pitch, roll respectively
