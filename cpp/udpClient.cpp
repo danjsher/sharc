@@ -202,7 +202,7 @@ int readAdc(int *input) {
   unsigned char data[3];
   int a2dVal;
   
-  for(int a2dChannel = 0; a2dChannel < 5; a2dChannel++) {
+  for(int a2dChannel = 0; a2dChannel < 6; a2dChannel++) {
     data[0] = 1; // first byte start bit
     data[1] = 0b10000000 |(((a2dChannel & 7) << 4)); //channel
     data[2] = 0; //don't care
@@ -264,7 +264,7 @@ int main(int argc, char** argv)
   /* now let's send the messages */
 
   int i = 0;
-  int adcVals[5] = {0};
+  int adcVals[6] = {0};
   float bicepYpr[3] = {0};
 
   // set up dmp
@@ -273,14 +273,14 @@ int main(int argc, char** argv)
   //main loop
   while(1) {
     readAdc(adcVals); // poll flex sensors for finger data
-    cout << adcVals[0] << " " << adcVals[1] << " " << adcVals[2] << " " << adcVals[3] << " " << adcVals[4] << endl;
-   dmpLoop(bicepYpr);
-    
+    cout << adcVals[0] << " " << adcVals[1] << " " << adcVals[2] << " " << adcVals[3] << " " << adcVals[4] << " " << adcVals[5] << endl;
+    dmpLoop(bicepYpr);
+   
     //printf("Sending packet %d to %s port %d\n", i, ipAddr, SERVICE_PORT);
    
    //package up data into character array and send it
-    sprintf(buf, "%d %d %d %d %d %d %f %f %f", i++,
-	    adcVals[0], adcVals[1], adcVals[2], adcVals[3], adcVals[4],
+    sprintf(buf, "%d %d %d %d %d %d %d %f %f %f", i++,
+	    adcVals[0], adcVals[1], adcVals[2], adcVals[3], adcVals[4], adcVals[5],
 	    bicepYpr[0], bicepYpr[1], bicepYpr[2]);
     if (sendto(fd, buf, strlen(buf), 0, (struct sockaddr *)&remaddr, slen)==-1) {
       perror("sendto");
@@ -293,6 +293,7 @@ int main(int argc, char** argv)
     buf[recvlen] = 0;	// expect a printable string - terminate it 
     //printf("received message: \"%s\"\n", buf);
     }
+    
     sleep(samplePeriod);
   }
   return 0;
