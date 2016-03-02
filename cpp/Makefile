@@ -9,17 +9,14 @@ LIBS=-pthread
 
 all:$(TARGETS)
 
-client: client.cpp MPU/I2Cdev.cpp MPU/MPU6050.cpp RaspberryPi-mcp3008Spi/mcp3008Spi.cpp
-	$(CC) $(FLAGS) -o $@ $^ -lm
-
-server: threadedserver.cpp 
-	$(CC) $(FLAGS) $(LIBS) -o $@ $^
-
 udpClient: udpClient.cpp MPU/I2Cdev.cpp MPU/MPU6050.cpp RaspberryPi-mcp3008Spi/mcp3008Spi.cpp
 	$(CC) $(FLAGS) -o $@ $^ -lm -lwiringPi
 
-udpServer: udpServer.cpp 
-	$(CC) $(FLAGS) $(LIBS) -o $@ $^
+udpServer: udpServer.cpp AdafruitPwm.cpp MPU/I2Cdev.cpp
+	$(CC) $(FLAGS) $(LIBS) -o $@ $^ -lm -lwiringPi
+
+i2c-test: test/i2c-test.cpp MPU/I2Cdev.cpp AdafruitPwm.cpp
+	$(CC) $(FLAGS) $(LIBS) -o $@ $^ -lm -lwiringPi
 
 tester: test/test.cpp 
 	$(CC) $(FLAGS) $(LIBS) -o $@ $^
@@ -27,4 +24,4 @@ tester: test/test.cpp
 .PHONY: clean
 
 clean:
-	rm $(TARGETS) *~
+	rm $(TARGETS) i2c-test *~
