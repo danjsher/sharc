@@ -12,16 +12,17 @@
 #include <thread>
 #include <string>
 
+#include "AdafruitPwm.h"
 
 // Servoblaster pin assignments
 #define THUMB  0
-#define INDEX  5
-#define MIDDLE 6
+#define INDEX 4
+#define MIDDLE 2
 #define RING   3
 #define PINKY  7
 
-#define SHOULDER_ROTATION 8
-#define SHOULDER_FLEXION  9
+#define SHOULDER_ROTATION 2
+#define SHOULDER_FLEXION  2
 
 #define BICEP_FLEX 10
 
@@ -69,6 +70,12 @@ list<char *> cmdQueue; //queue for storing input
 
 int armMode = REALTIME; //initially start in real time mode
 int playBack = STOP;
+
+
+/* 
+ * global pwmController object, used by cmdIssuer 
+ */
+AdafruitPwm pwmController = AdafruitPwm();
 
 /*
  * Thread for receving data from sleeve
@@ -144,40 +151,40 @@ void cmdIssuer() {
       
       // calculate each pwm signal
       float pwmSigs[PWM_SIGS] = {0.0,
-			  calcFingerPwm(pkt->adcVals[1], 745, 930, 8.0, 11.5),
-			  calcFingerPwm(pkt->adcVals[2], 730, 1023, 9.5, 13.0),
-			  calcFingerPwm(pkt->adcVals[3], 680, 1023, 6.4, 10.4),
-			  calcFingerPwm(pkt->adcVals[4], 735, 1023, 7.0, 13.0),
+			  calcFingerPwm(pkt->adcVals[1], 745, 930, 7.2, 10.4),
+			  calcFingerPwm(pkt->adcVals[2], 730, 1023, 7.4, 11.5),
+		 	  calcFingerPwm(pkt->adcVals[3], 680, 1023, 7.0, 10.2),
+			  calcFingerPwm(pkt->adcVals[4], 735, 1023, 5.3, 9.6),
 			  0.0,  // shoulder rotation
 			  0.0,  // shoulder flex
 			  0.0}; // bicep flex
       
       // thumb calculation
-      pwmSigs[0] = 11.5*((pkt->adcVals[0] - 725.0)/(1023.0 - 725.0))*20.0;
+      pwmSigs[0] = 11.4*((pkt->adcVals[0] - 725.0)/(1023.0 - 725.0))*20.0;
+
 
       // shoulder rotation calc
-      if( pkt->bicepYpr[2] < 0.0) {
-	pwmSigs[5] = pkt->bicepYpr[2] + 130.0;
-      } else if (pkt->bicepYpr[2] > 50.0 && pkt->bicepYpr[2] < 60.0 ) {
-	pwmSigs[5] = pkt->bicepYpr[2] + 180.0;
-      } else if (pkt->bicepYpr[2] > 0.0 && pkt->bicepYpr[2] < 50.0) {
-	pwmSigs[5] = pkt->bicepYpr[2] + 140.0;
+      if(pkt->bicepYpr[2] >= 0.0 && pkt->bicepYpr[2] < 60.0 ) { //rotation back
+	pwmSigs[5] = -1.1667*pkt->bicepYpr[2] + 130.0;
+      } else if (pkt->bicepYpr[2] < 0.0 && pkt->bicepYpr[2] > -80.0) { //forward rotation
+	pwmSigs[5] = -1.375*pkt->bicepYpr[2] + 130.0;
+      } else if ( pkt->bicepYpr[2] >= 60.0) { // out bounds back
+	pwmSigs[5] = 60.0;
+      } else if (pkt->bicepYpr[2] <= -80.0) { // out of bounds forward
+	pwmSigs[5] = 240.0;
       }
 
       // shoulder flex calc
-      float increasingPitch = 1.0;
-
-      if(pkt->bicepYpr[1] > 0.0 && pkt->bicepYpr[1]  < 70.0 && (pkt->bicepYpr[1] - prevPitch)  > 0.0) {
-	pwmSigs[6] = pkt->bicepYpr[1] + 70.0;
-      } else if (pkt->bicepYpr[1] >= 70.0) {
+      if(pkt->bicepYpr[1] > -45.0 && pkt->bicepYpr[1] < 0.0) {
+	pwmSigs[6] =  -1.4 * pkt->bicepYpr[1] + 70.0;
+      } else if ( pkt->bicepYpr[1] <= -45.0) { // flex out bound
 	pwmSigs[6] = 140.0;
-	cout << "max pitch reached" << endl;
-      } else if ( pkt->bicepYpr[1] <= 0.0 ) {
-	pkt->bicepYpr[1] = 70.0;
+      } else if (pkt->bicepYpr[1] >= 0.0) { // flex in bound
+	pwmSigs[6] = 70.0;
       }
 
       // bicep flex calc
-      // pwmSigs[7] =  
+      pwmSigs[7] =  (3.0+4.5*((pkt->adcVals[5]-730.0)/(990.0-740.0)))*20.0;
       
       string cmds[PWM_SIGS];
 
@@ -276,12 +283,18 @@ int main(int argc, char** argv) {
     return 0;
   }
 
+  //set up pwmController frequency to 50 Hz
+  pwmController.setPWMFreq(50);
+
   // dispatch command issuer thread
+  cout << "Spawning command issuer thread..." << endl;
   thread ct(cmdIssuer);
   ct.detach();
-
+  cout << "Done!" << endl;
+  
   //dispatch receiver thread
+  cout << "Spawning receiver thread..." << endl;
   thread rt(recvThread, udpSocket, remaddr);
-  rt.join(); 
-
+  cout << "Done!" << endl;
+  rt.join(); // wait for receiver thread to join to keep main running
 }
