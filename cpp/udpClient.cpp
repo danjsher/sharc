@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <sstream>
-
+#include <list>
 
 #include <wiringPi.h>
 #include "MPU/I2Cdev.h"
@@ -20,7 +20,16 @@
 #define BUFLEN 2048
 #define MSGS 5	/* number of messages to send */
 
+#define LIVE 0
+#define REC  1
+
 using namespace std;
+
+typedef struct SleevePacket {
+  int packetNum;
+  int adcVals[6];
+  float bicepYpr[3];
+} SleevePacket;
 
 /************************************* MCP3008 INIT ******************************************/
 
@@ -102,6 +111,39 @@ void dmpSetup() {
 // ===                    MAIN PROGRAM LOOP                     ===
 // ================================================================
 
+#define PI 3.141592653589793
+
+void correct(float w, float x, float y, float z) {
+
+  
+  double pitch;  
+  double yaw;
+  double roll; 
+  
+  double test = x*y + z*q.w;
+
+  if (test > 0.499) {
+    pitch = (2*atan2(x , q.w)) * 180.0 /  PI;
+    yaw = 90.0;
+    roll = 0;
+  } else if( test < -0.499 ) {
+    pitch = (-2 * atan2(x, q.w) * 180.0) / PI;
+    yaw = -90.0;
+    roll = 0;
+  } else {
+    
+    double sqx = x * x;
+    double sqy = y * y;
+    double sqz = z * z;
+    
+    pitch = (atan2(2 *y*q.w - 2*x *z, 1 - 2*sqy - 2*sqz) * 180.0) / PI;
+    yaw = (asin(2*test) * 180.0) / PI;
+    roll = (atan2(2*x*q.w - 2*y*z, 1 - 2*sqx - 2*sqz) * 180.0) / PI;
+  }
+
+  printf("corrected ypr %7.2f %7.2f %7.2f    ", yaw, pitch, roll);
+}
+
 void dmpLoop(float *bicepYpr) {
     // if programming failed, don't try to do anything
     if (!dmpReady) return;
@@ -123,6 +165,7 @@ void dmpLoop(float *bicepYpr) {
             // display quaternion values in easy matrix form: w x y z
             mpu.dmpGetQuaternion(&q, fifoBuffer);
             printf("quat %7.2f %7.2f %7.2f %7.2f    ", q.w,q.x,q.y,q.z);
+	    correct(q.w, q.x, q.z, q.y);
         #endif
 
         #ifdef OUTPUT_READABLE_EULER
@@ -224,12 +267,22 @@ int readAdc(int *input) {
 int main(int argc, char** argv)
 {
 
-  if (argc != 3) {
-    cout << "wrong # of args" << endl << "usage: ./udpClient <server_ip_addr> <samplePeriod (s)>" << endl;
+  if (argc != 4) {
+    cout << "wrong # of args" << endl << "usage: ./udpClient <server_ip_addr> <samplePeriod (s)> <mode>" << endl;
     return 0;
   }
+
+  int mode = LIVE;
   char *ipAddr = argv[1];
   float samplePeriod = atof(argv[2]);
+
+  if(argv[3][0] == 'r') {
+    mode = REC;
+  } else if (argv[3][0] != 'l') {
+    cout << "incorrect option: mode can either be \'r\' for record mode or \'l\' for live mode" << endl;
+    exit(0);
+  }
+  
   struct sockaddr_in myaddr, remaddr;
   int fd, slen=sizeof(remaddr);
   char buf[BUFLEN];	/* message buffer */
@@ -266,35 +319,101 @@ int main(int argc, char** argv)
   int i = 0;
   int adcVals[6] = {0};
   float bicepYpr[3] = {0};
+  
 
-  // set up dmp
   dmpSetup();
   
-  //main loop
-  while(1) {
-    readAdc(adcVals); // poll flex sensors for finger data
-    cout << adcVals[0] << " " << adcVals[1] << " " << adcVals[2] << " " << adcVals[3] << " " << adcVals[4] << " " << adcVals[5] << endl;
-    dmpLoop(bicepYpr);
-   
-    //printf("Sending packet %d to %s port %d\n", i, ipAddr, SERVICE_PORT);
-   
-   //package up data into character array and send it
-    sprintf(buf, "%d %d %d %d %d %d %d %f %f %f", i++,
-	    adcVals[0], adcVals[1], adcVals[2], adcVals[3], adcVals[4], adcVals[5],
-	    bicepYpr[0], bicepYpr[1], bicepYpr[2]);
-    if (sendto(fd, buf, strlen(buf), 0, (struct sockaddr *)&remaddr, slen)==-1) {
-      perror("sendto");
-      exit(1);
+  if(mode == LIVE) {
+    cout << "Live mode" << endl;
+    //main loop
+    while(1) {
+      readAdc(adcVals); // poll flex sensors for finger data
+      cout << adcVals[0] << " " << adcVals[1] << " " << adcVals[2] << " " << adcVals[3] << " " << adcVals[4] << " " << adcVals[5] << endl;
+      dmpLoop(bicepYpr);
+
+      
+      printf("Sending packet %d to %s port %d\n", i, ipAddr, SERVICE_PORT);
+      
+      //package up data into character array and send it
+      sprintf(buf, "%d %d %d %d %d %d %d %f %f %f", i++,
+	      adcVals[0], adcVals[1], adcVals[2], adcVals[3], adcVals[4], adcVals[5],
+	      bicepYpr[0], bicepYpr[1], bicepYpr[2]);
+      
+	if (sendto(fd, buf, strlen(buf), 0, (struct sockaddr *)&remaddr, slen)==-1) {
+	perror("sendto");
+	exit(1);
+      }
+      
+      //now receive an acknowledgement from the server 
+      recvlen = recvfrom(fd, buf, BUFLEN, 0, (struct sockaddr *)&remaddr, (socklen_t *)&slen);
+      if (recvlen >= 0) {
+	buf[recvlen] = 0;	// expect a printable string - terminate it 
+	//printf("received message: \"%s\"\n", buf);
+      }
+      
+      sleep(samplePeriod);
     }
-    
-    //now receive an acknowledgement from the server 
-    recvlen = recvfrom(fd, buf, BUFLEN, 0, (struct sockaddr *)&remaddr, (socklen_t *)&slen);
-    if (recvlen >= 0) {
-    buf[recvlen] = 0;	// expect a printable string - terminate it 
-    //printf("received message: \"%s\"\n", buf);
+  } else if ( mode == REC ) {
+    cout << "Record Mode" << endl;
+    cout << "When you are ready to begin recording press enter." << endl;
+
+    char userIn[10];
+    fgets(userIn, 10, stdin);
+
+    int recordLength = 0;
+    list<SleevePacket> recordQueue;
+      
+    while(recordLength++ < 1000) {
+      readAdc(adcVals); // poll flex sensors for finger data
+
+      cout << adcVals[0] << " "
+	   << adcVals[1] << " "
+	   << adcVals[2] << " "
+	   << adcVals[3] << " "
+	   << adcVals[4] << " "
+	   << adcVals[5] << " " << endl;
+      
+      //dmpLoop(bicepYpr);
+
+      SleevePacket pkt = {recordLength, {adcVals[0], adcVals[1], adcVals[2], adcVals[3], adcVals[4], adcVals[5]}, {bicepYpr[0], bicepYpr[1], bicepYpr[2]}};
+      recordQueue.push_back(pkt);
     }
+
+    cout << "done recording, now playing back" << endl;
+    sleep(2);
     
-    sleep(samplePeriod);
-  }
+    while(!recordQueue.empty()) {
+      SleevePacket pkt = recordQueue.front();
+      cout << pkt.packetNum << " "
+	   << pkt.adcVals[0] << " "
+	   << pkt.adcVals[1] << " "
+	   << pkt.adcVals[2] << " "
+	   << pkt.adcVals[3] << " "
+	   << pkt.adcVals[4] << " "
+	   << pkt.adcVals[5] << " "
+	   << pkt.bicepYpr[0] << " "
+	   << pkt.bicepYpr[1] << " "
+	   << pkt.bicepYpr[2] << endl;
+      recordQueue.pop_front();
+
+
+      //package up data into character array and send it
+      sprintf(buf, "%d %d %d %d %d %d %d %f %f %f", i++,
+	      pkt.adcVals[0], pkt.adcVals[1], pkt.adcVals[2], pkt.adcVals[3], pkt.adcVals[4], pkt.adcVals[5],
+	      pkt.bicepYpr[0], pkt.bicepYpr[1], pkt.bicepYpr[2]);
+      if (sendto(fd, buf, strlen(buf), 0, (struct sockaddr *)&remaddr, slen)==-1) {
+	perror("sendto");
+	exit(1);
+      }
+      
+      //now receive an acknowledgement from the server 
+      recvlen = recvfrom(fd, buf, BUFLEN, 0, (struct sockaddr *)&remaddr, (socklen_t *)&slen);
+      if (recvlen >= 0) {
+	buf[recvlen] = 0;	// expect a printable string - terminate it 
+	//printf("received message: \"%s\"\n", buf);
+      }
+      
+    }
+  } // record mode
   return 0;
 }
